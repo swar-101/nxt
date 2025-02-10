@@ -1,4 +1,4 @@
-package com.example.product_catalog_service.client;
+package com.example.product_catalog_service.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

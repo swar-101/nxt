@@ -1,5 +1,6 @@
 package com.example.product_catalog_service.service;
 
+import com.example.product_catalog_service.convertor.IdConvertor;
 import com.example.product_catalog_service.dto.Ack;
 import com.example.product_catalog_service.dto.ProductDTO;
 import com.example.product_catalog_service.entity.Product;
@@ -23,11 +24,13 @@ import static com.example.product_catalog_service.util.Constants.PRODUCT_NOT_FOU
 public class NxtStoreService {
 
     private final ProductRepository productRepository;
+    private final IdConvertor idConvertor;
     private final ProductMapper productMapper;
 
     @Autowired
-    public NxtStoreService(ProductMapper productMapper, ProductRepository productRepository) {
+    public NxtStoreService(ProductMapper productMapper, IdConvertor idConvertor, ProductRepository productRepository) {
         this.productMapper = productMapper;
+        this.idConvertor = idConvertor;
         this.productRepository = productRepository;
     }
 
@@ -45,10 +48,8 @@ public class NxtStoreService {
      */
     public Ack createProduct(ProductDTO productDTO) {
         Product product = productMapper.mapToEntity(productDTO);
-
         setBaseValues(product);
         productRepository.save(product);
-
         return ackProductCreated(product);
     }
 
@@ -58,25 +59,19 @@ public class NxtStoreService {
      * @return
      */
     public ProductDTO getProductById(String productId) {
-        Optional<Product> optionalProduct = productRepository.findById(1L);
-
-        if (optionalProduct.isPresent()) {
-            Product product = optionalProduct.get();
-
-            ProductDTO productDTO = productMapper.mapToDTO(product);
-            return productDTO;
-        }
-
+        Long internalId = idConvertor.toInternalId(productId);
+        Optional<Product> optionalProduct = productRepository.findById(internalId);
         // Alternatively, we can use a declarative style code:
 /*
 *       optionalProduct.ifPresentOrElse();
 *
 *
 * */
-
-
-        // Custom Product Not Found
-        throw new NullPointerException(PRODUCT_NOT_FOUND_MSG);
+        if (optionalProduct.isPresent()) {
+            Product product = optionalProduct.get();
+            ProductDTO productDTO = productMapper.mapToDTO(product);
+            return productDTO;
+        } else throw new NullPointerException(PRODUCT_NOT_FOUND_MSG);
     }
 
     public ProductDTO getProductByName(String name) {

@@ -10,7 +10,6 @@ import java.util.Date;
 @Setter
 @MappedSuperclass
 public class BaseModel {
-
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;

@@ -43,7 +43,8 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<UserDTO> login(@RequestBody LoginRequestDTO loginRequestDTO) {
         try {
-            Pair<User, MultiValueMap<String, String>> response = authService.login(loginRequestDTO.getEmail(), loginRequestDTO.getPassword());
+            Pair<User, MultiValueMap<String, String>> response = authService
+                    .login(loginRequestDTO.getEmail(), loginRequestDTO.getPassword());
 
             if (response == null) {
                 throw new IllegalArgumentException("Invalid email or password");
