@@ -2,11 +2,13 @@ package com.example.user_auth_service.service;
 
 import com.example.user_auth_service.client.KafkaProducerClient;
 import com.example.user_auth_service.dto.MessageDTO;
+import com.example.user_auth_service.dto.UserDTO;
 import com.example.user_auth_service.entity.Session;
 import com.example.user_auth_service.entity.SessionStatus;
 import com.example.user_auth_service.entity.User;
 import com.example.user_auth_service.exception.AuthenticationException;
 import com.example.user_auth_service.exception.UserNotFoundException;
+import com.example.user_auth_service.mapper.UserMapper;
 import com.example.user_auth_service.repository.SessionRepository;
 import com.example.user_auth_service.repository.UserRepository;
 import com.example.user_auth_service.utils.Constants;
@@ -41,30 +43,33 @@ public class NxtAuthService implements AuthService {
     private final SecretKey secretKey;
     private final KafkaProducerClient kafkaProducerClient;
     private final ObjectMapper objectMapper;
+    private final UserMapper userMapper;
 
     @Autowired
     public NxtAuthService(UserRepository userRepository, SessionRepository sessionRepository,
                           BCryptPasswordEncoder bCryptPasswordEncoder, SecretKey secretKey,
-                          KafkaProducerClient kafkaProducerClient, ObjectMapper objectMapper) {
+                          KafkaProducerClient kafkaProducerClient, ObjectMapper objectMapper,
+                          UserMapper userMapper) {
         this.userRepository = userRepository;
         this.sessionRepository = sessionRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.secretKey = secretKey;
         this.kafkaProducerClient = kafkaProducerClient;
         this.objectMapper = objectMapper;
+        this.userMapper = userMapper;
     }
 
     @Override
-    public User signUp(String email, String password) {
+    public UserDTO signUp(String email, String password) {
         Optional<User> userOptional = userRepository.findByEmail(email);
         if (userOptional.isPresent())
-            return userOptional.get();
+            return userMapper.mapToDto(userOptional.get());
 
         User user = saveUser(email, password);
 
 //        kafkaProducerClient.sendMessage(KAFKA_TOPIC_SIGNUP, prepareWelcomeMessage(email));
 
-        return user;
+        return userMapper.mapToDto(user);
     }
 
     @Override
@@ -121,7 +126,7 @@ public class NxtAuthService implements AuthService {
 
     private MultiValueMap<String, String> createCookieHeaderWithToken(String token) {
         MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
-        headers.add(HttpHeaders.SET_COOKIE, token);
+        headers.add(HttpHeaders.COOKIE, token);
 
         return headers;
     }

@@ -1,10 +1,8 @@
 package com.example.user_auth_service.controller;
 
-import com.example.user_auth_service.dto.LoginRequestDTO;
-import com.example.user_auth_service.dto.SignupRequestDTO;
-import com.example.user_auth_service.dto.UserDTO;
-import com.example.user_auth_service.dto.ValidationRequestDTO;
+import com.example.user_auth_service.dto.*;
 import com.example.user_auth_service.entity.User;
+import com.example.user_auth_service.exception.AuthenticationException;
 import com.example.user_auth_service.mapper.UserMapper;
 import com.example.user_auth_service.service.AuthService;
 import lombok.extern.log4j.Log4j2;
@@ -34,14 +32,12 @@ public class AuthController {
     @PostMapping("/signup")
     public ResponseEntity<UserDTO> signUp(@RequestBody SignupRequestDTO signupRequestDTO) {
         log.info("[AuthController][signUp] signUp requestDTO: {}", signupRequestDTO);
-
-        User user = authService.signUp(signupRequestDTO.getEmail(), signupRequestDTO.getPassword());
-
-        return new ResponseEntity<>(userMapper.mapToDto(user), HttpStatus.CREATED);
+        UserDTO user = authService.signUp(signupRequestDTO.getEmail(), signupRequestDTO.getPassword());
+        return new ResponseEntity<>(user, HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserDTO> login(@RequestBody LoginRequestDTO loginRequestDTO) {
+    public ResponseEntity<DTO> login(@RequestBody LoginRequestDTO loginRequestDTO) {
         try {
             Pair<User, MultiValueMap<String, String>> response = authService
                     .login(loginRequestDTO.getEmail(), loginRequestDTO.getPassword());
@@ -51,7 +47,14 @@ public class AuthController {
             }
 
             return new ResponseEntity<>(userMapper.mapToDto(response.a), response.b, HttpStatus.OK);
-        } catch (IllegalArgumentException e) {
+
+        } catch (AuthenticationException e ) {
+            ErrorDTO errorDTO = new ErrorDTO();
+            errorDTO.setCode("PWMM");
+            errorDTO.setMessage("Password doesn't match.");
+            return new ResponseEntity<>(errorDTO, HttpStatus.UNAUTHORIZED);
+        }
+        catch (IllegalArgumentException e) {
             return new ResponseEntity<>(null, HttpStatus.BAD_REQUEST);
         }
     }
