@@ -1,5 +1,0 @@
-# Preliminary tests
-http POST http://localhost:9090/auth/signup email=test@example.com password=TestPassword123
-http POST http://localhost:9090/auth/login email=test@example.com password=TestPassword123
-
-http POST http://localhost:9090/auth/login email=test@example.com password=TestPassword133

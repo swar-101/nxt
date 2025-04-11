@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  nxt-email-service:
+    image: nxt-email-service:latest
+    container_name: email-service-container
+    build:
+      context: . # Adjust based on your folder structure
+      dockerfile: Dockerfile
+    ports:
+      - "8090:8090"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker # Ensure if the app supports Docker profile
+    depends_on:
+      - postgres-db
+
+  postgres-db:
+    image: postgres:15
+    container_name: postgres-container
+    restart: always
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: 3lBNpuebl0
+      POSTGRES_DB: email_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
+
