@@ -7,9 +7,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class PaymentServiceApplication {
 
 	public static void main(String[] args) {
-		System.out.println(">>>Stripe Key = " + System.getenv("NXT_STRIPE_API_KEY"));
-		System.out.println("Stripe Key = " + System.getenv("NXT_RAZORPAY_KEY"));
-		System.out.println("Stripe Key = " + System.getenv("NXT_RAZORPAY_SECRET"));
+//		System.out.println(">>>Stripe Key = " + System.getenv("NXT_STRIPE_API_KEY"));
+//		System.out.println("Stripe Key = " + System.getenv("NXT_RAZORPAY_KEY"));
+//		System.out.println("Stripe Key = " + System.getenv("NXT_RAZORPAY_SECRET"));
 
 		SpringApplication.run(PaymentServiceApplication.class, args);
 	}

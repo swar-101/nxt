@@ -25,9 +25,9 @@ public class PaymentGatewayStrategy {
 
     public PaymentGatewayClient getOptimalPaymentGateway() {
 //        if (generateGatewayDecisionFactor() < 4)
-//            return razorpayClient;
+            return razorpayClient;
 //        else
-            return stripeClient;
+//            return stripeClient;
     }
 
     private int generateGatewayDecisionFactor() {
