@@ -13,11 +13,11 @@ import com.razorpay.RazorpayException;
 @Component
 public class NxtRazorpayClient implements PaymentGatewayClient {
 
-    private final RazorpayClient client;   
+    private final RazorpayClient client;
     private final RazorpayPaymentLinkRequestBuilder requestBuilder;
 
     @Autowired
-    public NxtRazorpayClient(RazorpayClient client, 
+    public NxtRazorpayClient(RazorpayClient client,
                              RazorpayPaymentLinkRequestBuilder requestBuilder) {
 
         this.client = client;
@@ -27,12 +27,12 @@ public class NxtRazorpayClient implements PaymentGatewayClient {
     @Override
     public String getPaymentLink(Long amount, String name, String phoneNumber, String orderId) {
         JSONObject request = requestBuilder.buildPaymentLinkRequest(amount, orderId, phoneNumber, name);
- 
+
         try {
             PaymentLink paymentLink = client.paymentLink.create(request);
-            return paymentLink.get("short_url").toString();     
+            return paymentLink.get("short_url").toString();
         } catch(RazorpayException e) {
             throw new RazorpayPaymentCreationException("Unable to create payment link : ", e);
         }
     }
-}   
+}
