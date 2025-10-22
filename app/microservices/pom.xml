@@ -16,6 +16,7 @@
         <module>product-catalog-service</module>
         <module>service-discovery</module>
 		<module>user-auth-service</module>
+        <module>user-service</module>
     </modules>
 
     <!-- Common dependencies -->
@@ -29,6 +30,20 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <version>6.2.11</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.34</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 
     <!-- Centralized plugins and build configuration -->
     <build>
