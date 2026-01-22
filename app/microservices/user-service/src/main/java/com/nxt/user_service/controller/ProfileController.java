@@ -23,7 +23,7 @@ public class ProfileController {
 
     @GetMapping("/me")
     public ResponseEntity<User> me(@AuthenticationPrincipal CustomUserPrincipal principal) {
-        Long userId = principal.getId();
+        Long userId = principal.id();
 
         User u = service.getById(userId);
         u.setPasswordHash(null);
@@ -36,7 +36,7 @@ public class ProfileController {
             @AuthenticationPrincipal CustomUserPrincipal principal,
             @Valid @RequestBody UpdateProfileDTO dto) {
 
-        Long userId = principal.getId(); // FIX
+        Long userId = principal.id(); // FIX
 
         User updated = service.update(userId, dto);
         updated.setPasswordHash(null);
