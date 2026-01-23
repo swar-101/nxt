@@ -41,17 +41,12 @@ class PasswordResetControllerTest {
             PasswordResetReqDTO req = new PasswordResetReqDTO();
             req.setEmail("john@example.com");
 
-            Mockito.when(passwordResetService.requestReset(any()))
-                    .thenReturn("abc123token");
-
             mockMvc.perform(
                             post("/api/v1/password/reset")
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(objectMapper.writeValueAsString(req))
                     )
-                    .andExpect(status().isAccepted())
-                    .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.rawToken").exists());
+                    .andExpect(status().isAccepted());
 
             Mockito.verify(passwordResetService).requestReset(any(PasswordResetReqDTO.class));
         }
