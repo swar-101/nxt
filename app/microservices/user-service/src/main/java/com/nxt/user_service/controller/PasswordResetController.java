@@ -25,15 +25,14 @@ public class PasswordResetController {
     }
 
     @PostMapping("/reset")
-    public ResponseEntity<Map<String, String>> requestReset(@Valid @RequestBody PasswordResetReqDTO req) {
+    public ResponseEntity<Void> requestReset(@Valid @RequestBody PasswordResetReqDTO req) {
         long start = System.currentTimeMillis();
 
-        String rawToken = passwordResetService.requestReset(req);
+        passwordResetService.requestReset(req);
 
         long end = System.currentTimeMillis();
 
-        // TODO: Fix the flow to email the token and return 202 with no body
-        return ResponseEntity.accepted().body(Map.of("rawToken", rawToken));
+        return ResponseEntity.accepted().build();
     }
 
     @PostMapping("/confirm")

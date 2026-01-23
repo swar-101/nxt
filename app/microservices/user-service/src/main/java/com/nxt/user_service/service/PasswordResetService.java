@@ -41,14 +41,14 @@ public class PasswordResetService {
     }
 
     @Transactional
-    public String requestReset(PasswordResetReqDTO req) {
+    public void requestReset(PasswordResetReqDTO req) {
         long start = System.currentTimeMillis();
 
         String email = req.getEmail();
 
         var opt = userRepository.findByEmail(email);
         if (opt.isEmpty()) {
-            return null;
+            return;
         }
 
         User user = opt.get();
@@ -68,8 +68,6 @@ public class PasswordResetService {
         emailSender.sendPasswordReset(email, resetLink);
 
         long duration = System.currentTimeMillis() - start;
-
-        return rawToken; // dev only, not logged
     }
 
     @Transactional
