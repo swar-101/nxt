@@ -1,5 +1,6 @@
 package com.nxt.user_service.exception;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -23,6 +24,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<Map<String, String>> handUserExists(UserAlreadyExistsException ex) {
-        return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Map.of("error", "CONFLICT",
+                             "message", ex.getMessage()));
     }
 }

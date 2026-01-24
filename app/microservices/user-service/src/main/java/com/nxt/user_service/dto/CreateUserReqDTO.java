@@ -23,6 +23,9 @@ public class CreateUserReqDTO {
     @NotBlank(message = "Email is required")
     private String email;
 
+    @NotBlank(message = "password is required")
+    private String password;
+
     @ValidRegistrationType
     @NotBlank(message = "Registration type is required")
     private String registrationType;

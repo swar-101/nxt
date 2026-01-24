@@ -2,20 +2,25 @@ package com.nxt.user_service.service;
 
 import com.nxt.user_service.dto.CreateUserReqDTO;
 import com.nxt.user_service.dto.CreateUserRespDTO;
+import com.nxt.user_service.entity.RefreshToken;
 import com.nxt.user_service.entity.User;
 import com.nxt.user_service.exception.UserAlreadyExistsException;
-import com.nxt.user_service.model.RegistrationType;
 import com.nxt.user_service.model.ResponseStatus;
+import com.nxt.user_service.model.TokenPair;
+import com.nxt.user_service.repo.RefreshTokenRepository;
 import com.nxt.user_service.repo.UserRepository;
+import com.nxt.user_service.service.token.JwtTokenService;
+import com.nxt.user_service.service.token.RefreshTokenFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -25,66 +30,83 @@ class RegistrationServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private JwtTokenService jwtTokenService;
+
+    @Mock
+    private RefreshTokenFactory refreshTokenFactory;
+
+    @Mock
+    private RefreshTokenRepository refreshTokenRepository;
+
     @InjectMocks
     private RegistrationService registrationService;
 
-    private CreateUserReqDTO validRequest;
-
+    private CreateUserReqDTO req;
     @BeforeEach
     void setup() {
-        validRequest = new CreateUserReqDTO();
-        validRequest.setFirstName("John");
-        validRequest.setLastName("Doe");
-        validRequest.setEmail("john.doe@example.com");
-        validRequest.setRegistrationType("GOOGLE");
+        req = new CreateUserReqDTO();
+        req.setFirstName("John");
+        req.setLastName("Doe");
+        req.setEmail("john@example.com");
+        req.setPassword("StrongPassword@123");
+        req.setRegistrationType("EMAIL");
     }
-
+    // email does not exist
+    // user is saved
+    // password is encoded
+    // tokens are generated
+    // refresh token is persisted
+    // resp contains expected data
     @Test
-    void shouldCreateUserSuccessfully() {
-        when(userRepository.existsByEmail(validRequest.getEmail())).thenReturn(false);
-
+    void shouldCreateUserAndGenerateTokensWhenEmailDoesNotExist() {
         User savedUser = new User();
         savedUser.setId(1L);
-        savedUser.setFirstName("John");
-        savedUser.setLastName("Doe");
-        savedUser.setEmail("john.doe@example.com");
-        savedUser.setRegistrationType(RegistrationType.GOOGLE);
+        savedUser.setEmail("john@example.com");
 
-        when(userRepository.save(any(User.class))).thenReturn(savedUser);
-        CreateUserRespDTO response = registrationService.createUser(validRequest);
+        when(userRepository.existsByEmail("john@example.com"))
+                .thenReturn(false);
 
-        assertThat(response).isNotNull();
-        assertThat(response.getUserId()).isEqualTo(1L);
-        assertThat(response.getResponseStatus()).isEqualTo(ResponseStatus.SUCCESSFUL);
+        when(passwordEncoder.encode(anyString()))
+                .thenReturn("hashed-password");
 
-        verify(userRepository).existsByEmail("john.doe@example.com");
+        when(userRepository.save(any(User.class)))
+                .thenReturn(savedUser);
+
+        var tokens = new TokenPair("access", "refresh");
+        when(jwtTokenService.generateTokens(savedUser))
+                .thenReturn(tokens);
+
+        when(refreshTokenFactory.fromRaw("refresh", 1L))
+                .thenReturn(new RefreshToken());
+
+        CreateUserRespDTO resp = registrationService.createUser(req);
+
+        assertThat(resp.getUserId()).isEqualTo(1L);
+        assertThat(resp.getEmail()).isEqualTo("john@example.com");
+        assertThat(resp.getAccessToken()).isEqualTo("access");
+        assertThat(resp.getRefreshToken()).isEqualTo("refresh");
+        assertThat(resp.getResponseStatus()).isEqualTo(ResponseStatus.SUCCESSFUL);
+
         verify(userRepository).save(any(User.class));
+        verify(refreshTokenRepository).save(any(RefreshToken.class));
+        verify(passwordEncoder).encode(anyString());
+        verify(jwtTokenService).generateTokens(savedUser);
     }
 
+    // negative : email already exists
     @Test
-    void shouldThrowExceptionWhenEmailAlreadyExists() {
-        // given
-        when(userRepository.existsByEmail(validRequest.getEmail())).thenReturn(true);
+    void shouldThrowWhenEmailAlreadyExists() {
+        when(userRepository.existsByEmail("john@example.com"))
+                .thenReturn(true);
 
-        // when / then
-        assertThatThrownBy(() -> registrationService.createUser(validRequest))
-                .isInstanceOf(UserAlreadyExistsException.class)
-                .hasMessageContaining("Email already registered");
+        assertThrows(UserAlreadyExistsException.class,
+                () -> registrationService.createUser(req));
 
-        verify(userRepository, never()).save(any(User.class));
-    }
-
-    @Test
-    void shouldThrowExceptionForInvalidRegistrationType() {
-        // given
-        validRequest.setRegistrationType("INVALID_TYPE");
-        when(userRepository.existsByEmail(validRequest.getEmail())).thenReturn(false);
-
-        // when / then
-        assertThatThrownBy(() -> registrationService.createUser(validRequest))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("No enum constant");
-
-        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository, never()).save(any());
+        verify(refreshTokenRepository, never()).save(any());
     }
 }

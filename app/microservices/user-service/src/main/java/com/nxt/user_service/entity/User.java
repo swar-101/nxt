@@ -38,6 +38,8 @@ public class User {
     @Column(nullable = false)
     private Instant updateAt;
 
+    private String passwordHash;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_metadata", joinColumns = @JoinColumn(name = "user_id"))
     @MapKeyColumn(name = "`key`")

@@ -6,6 +6,7 @@ import com.nxt.user_service.service.RegistrationService;
 import jakarta.validation.Valid;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,8 +26,13 @@ public class RegistrationController {
     }
 
     @PostMapping
-    public ResponseEntity<CreateUserRespDTO> createUser(@Valid @RequestBody CreateUserReqDTO request) {
-        log.info("[RegistrationController][createUser] Received request : {}", request);
-        return ResponseEntity.ok(registrationService.createUser(request));
+    public ResponseEntity<CreateUserRespDTO> createUser(@Valid @RequestBody CreateUserReqDTO req) {
+        long start = System.currentTimeMillis();
+
+        CreateUserRespDTO resp = registrationService.createUser(req);
+
+        long end = System.currentTimeMillis();
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(resp);
     }
 }

@@ -2,57 +2,83 @@ package com.nxt.user_service.service;
 
 import com.nxt.user_service.dto.CreateUserReqDTO;
 import com.nxt.user_service.dto.CreateUserRespDTO;
+import com.nxt.user_service.entity.RefreshToken;
 import com.nxt.user_service.entity.User;
 import com.nxt.user_service.exception.UserAlreadyExistsException;
 import com.nxt.user_service.model.ResponseStatus;
+import com.nxt.user_service.repo.RefreshTokenRepository;
 import com.nxt.user_service.repo.UserRepository;
-import com.nxt.user_service.util.Util;
 
+import com.nxt.user_service.service.token.JwtTokenService;
+import com.nxt.user_service.service.token.RefreshTokenFactory;
+import com.nxt.user_service.util.Util;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
-import java.util.Map;
 
 @Service
 public class RegistrationService {
 
-    private final UserRepository repository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtTokenService jwtTokenService;
+    private final RefreshTokenFactory refreshTokenFactory;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
-    public RegistrationService(UserRepository repository) {
-        this.repository = repository;
+    public RegistrationService(UserRepository repository,
+                               PasswordEncoder passwordEncoder,
+                               JwtTokenService jwtTokenService,
+                               RefreshTokenFactory refreshTokenFactory,
+                               RefreshTokenRepository refreshTokenRepository) {
+
+        this.userRepository = repository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtTokenService = jwtTokenService;
+        this.refreshTokenFactory = refreshTokenFactory;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
-    public CreateUserRespDTO createUser(CreateUserReqDTO request) {
-        String email = request.getEmail();
-        if (repository.existsByEmail(email))
+    public CreateUserRespDTO createUser(CreateUserReqDTO req) {
+        long start = System.currentTimeMillis();
+
+        // check email, if not continue
+        String email = req.getEmail();
+        if (userRepository.existsByEmail(email)) {
+            // log event
             throw new UserAlreadyExistsException("Email already registered");
+        }
 
-        String firstName = request.getFirstName();
-        String lastName = request.getLastName();
-        String registrationType = request.getRegistrationType();
-        Map<String, String> metadata = request.getMetadata();
-
+        // build user entity
         User user = new User();
-        user.setFirstName(firstName);
-        user.setLastName(lastName);
-        user.setEmail(email);
-        user.setRegistrationType(Util.fromString(registrationType));
-        user.setMetadata(metadata);
-        user = repository.save(user);
+        user.setFirstName(req.getFirstName());
+        user.setLastName(req.getLastName());
+        user.setEmail(req.getEmail());
+        user.setRegistrationType(Util.fromString(req.getRegistrationType()));
+        user.setMetadata(req.getMetadata());
+        user.setPasswordHash(passwordEncoder.encode(req.getPassword()));
 
-        CreateUserRespDTO response = new CreateUserRespDTO();
-        response.setFirstName(firstName);
-        response.setLastName(lastName);
-        response.setUserId(user.getId());
-        response.setResponseStatus(ResponseStatus.SUCCESSFUL);
-        response.setEmail(email);
-        response.setEmailVerified(false);
-        response.setCreatedAt(new Date().toString());
-        response.setRefreshToken("123");
-        response.setAccessToken("abc");
+        user = userRepository.save(user);
 
-        return response;
+        // generate + persist tokens
+        var tokens = jwtTokenService.generateTokens(user);
+        RefreshToken refreshTokenEntity = refreshTokenFactory.fromRaw(tokens.refreshToken(), user.getId());
+        refreshTokenRepository.save(refreshTokenEntity);
+
+        long duration = System.currentTimeMillis() - start;
+
+        CreateUserRespDTO resp = new CreateUserRespDTO();
+        resp.setFirstName(req.getFirstName());
+        resp.setLastName(req.getLastName());
+        resp.setUserId(user.getId());
+        resp.setResponseStatus(ResponseStatus.SUCCESSFUL);
+        resp.setEmail(req.getEmail());
+        resp.setEmailVerified(false);
+        resp.setCreatedAt(new Date().toString());
+        resp.setAccessToken(tokens.accessToken());
+        resp.setRefreshToken(tokens.refreshToken());
+        return resp;
     }
 }
