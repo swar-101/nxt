@@ -23,4 +23,5 @@ public class UpdateProfileDTO {
     public boolean hasAtLeastOneField() {
         return firstName != null || lastName != null || email != null;
     }
+
 }

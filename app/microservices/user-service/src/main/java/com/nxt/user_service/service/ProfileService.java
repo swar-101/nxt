@@ -25,6 +25,12 @@ public class ProfileService {
     @Transactional
     public User update(Long id, UpdateProfileDTO dto) {
         User u = getById(id);
+
+        /*
+        * TODO: Decide how to log updated fields, with keys or keys and values
+        *  too.
+        * */
+
         if (dto.getFirstName() != null) u.setFirstName(dto.getFirstName());
         if (dto.getLastName() != null) u.setLastName(dto.getLastName());
         if (dto.getEmail() != null) u.setEmail(dto.getEmail());

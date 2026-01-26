@@ -6,5 +6,5 @@ public class CreateUserReqDTO {
     private String lastName;
     private String email;
 
-    private RegistrationType registrationType;
+//    private RegistrationType registrationType;
 }

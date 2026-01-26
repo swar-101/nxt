@@ -11,7 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("api/v1/profile")
+@RequestMapping("/profile")
 public class ProfileController {
 
     private final ProfileService service;
@@ -22,7 +22,7 @@ public class ProfileController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<User> me(@AuthenticationPrincipal CustomUserPrincipal principal) {
+    public ResponseEntity<User> getCurrentUser(@AuthenticationPrincipal CustomUserPrincipal principal) {
         Long userId = principal.id();
 
         User u = service.getById(userId);
@@ -30,9 +30,8 @@ public class ProfileController {
         return ResponseEntity.ok(u);
     }
 
-
     @PutMapping("/me")
-    public ResponseEntity<User> update(
+    public ResponseEntity<User> updateCurrentUser(
             @AuthenticationPrincipal CustomUserPrincipal principal,
             @Valid @RequestBody UpdateProfileDTO dto) {
 
@@ -43,5 +42,4 @@ public class ProfileController {
 
         return ResponseEntity.ok(updated);
     }
-
 }
