@@ -1,20 +1,20 @@
 package com.nxt.user_service.controller;
 
+import com.nxt.user_service.auth.GoogleAuthRequest;
+import com.nxt.user_service.auth.PasswordAuthRequest;
+import com.nxt.user_service.dto.GoogleLoginReqDTO;
 import com.nxt.user_service.dto.LoginReqDTO;
 import com.nxt.user_service.dto.LoginRespDTO;
 import com.nxt.user_service.service.AuthService;
 import jakarta.validation.Valid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/auth")
 public class AuthController {
-
-    private static final Logger apiLogger = LoggerFactory.getLogger("API_LOGGER");
 
     private final AuthService authService;
 
@@ -23,37 +23,46 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<LoginRespDTO> login(@RequestBody @Valid LoginReqDTO req) {
+    @PostMapping("/login/password")
+    public ResponseEntity<LoginRespDTO> passwordLogin(@RequestBody LoginReqDTO req) {
         long start = System.currentTimeMillis();
 
-        apiLogger.info("Login start | email={}", req.getEmail());
-
-        LoginRespDTO resp = authService.login(req);
+        LoginRespDTO resp = authService.authenticate(
+                new PasswordAuthRequest(req.getEmail(), req.getPassword())
+        );
 
         long end = System.currentTimeMillis();
-        apiLogger.info("Login success | userId={} | timeMs={}", resp.getUserId(), (end - start));
+        long duration = end - start;
+
+        return ResponseEntity.ok(resp);
+    }
+
+    @PostMapping("/login/google")
+    public ResponseEntity<LoginRespDTO> googleLogin(@RequestBody @Valid GoogleLoginReqDTO req) {
+        long start = System.currentTimeMillis();
+
+        LoginRespDTO resp = authService.authenticate(
+                new GoogleAuthRequest(req.getIdToken())
+        );
+
+        long end = System.currentTimeMillis();
+        long duration = end - start;
 
         return ResponseEntity.ok(resp);
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<LoginRespDTO> refresh(@RequestParam("refreshToken") String refreshToken) {
+    public ResponseEntity<LoginRespDTO> refresh(
+            @RequestParam("refreshToken")
+            @NotBlank(message = "refreshToken must not be blank")
+            String refreshToken
+    ) {
         long start = System.currentTimeMillis();
 
-        String tokenPrefix;
-        if (refreshToken == null || refreshToken.isBlank()) {
-            tokenPrefix = "<empty>";
-        } else {
-            int prefixLen = Math.min(6, refreshToken.length());
-            tokenPrefix = refreshToken.substring(0, prefixLen);
-        }
-
-        apiLogger.info("RefreshToken start | tokenHash={}...", tokenPrefix);
-
         LoginRespDTO resp = authService.refresh(refreshToken);
+
         long end = System.currentTimeMillis();
-        apiLogger.info("RefreshToken success | userId={} | timeMs={}", resp.getUserId(), (start - end));
+        long duration = end - start;
 
         return ResponseEntity.ok(resp);
     }
