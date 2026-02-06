@@ -1,27 +1,31 @@
 package com.nxt.user_service.service;
 
-import com.nxt.user_service.dto.LoginReqDTO;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.nxt.user_service.auth.*;
 import com.nxt.user_service.dto.LoginRespDTO;
-import com.nxt.user_service.dto.TokenPair;
 import com.nxt.user_service.entity.RefreshToken;
 import com.nxt.user_service.entity.User;
+import com.nxt.user_service.exception.UnsupportedAuthProviderException;
+import com.nxt.user_service.exception.UserNotFoundException;
+import com.nxt.user_service.model.TokenPair;
+import com.nxt.user_service.model.VerifiedIdentity;
 import com.nxt.user_service.repo.RefreshTokenRepository;
 import com.nxt.user_service.repo.UserRepository;
+import com.nxt.user_service.service.token.IdentityResolutionService;
 import com.nxt.user_service.service.token.JwtTokenService;
 import com.nxt.user_service.service.token.RefreshTokenFactory;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,100 +33,444 @@ class AuthServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private IdentityResolutionService identityResolutionService;
+
     @Mock
     private JwtTokenService jwtTokenService;
-    @Mock
-    private RefreshTokenRepository refreshTokenRepository;
-    @Mock
-    private PasswordEncoder passwordEncoder;
+
     @Mock
     private RefreshTokenFactory refreshTokenFactory;
 
-    @InjectMocks
-    private AuthService authService;
+    @Mock
+    private RefreshTokenRepository refreshTokenRepository;
 
-    private User user;
+    @Mock
+    private AuthenticationMethod googleAuthenticationMethod;
 
-    @BeforeEach
-    void setup() {
-        user = new User();
-        user.setId(10L);
-        user.setEmail("test@example.com");
-        user.setPasswordHash("encoded-password");
+    @Nested
+    class GoogleAuthentication {
+
+        private AuthService authService;
+        private User user;
+
+        @BeforeEach
+        void setup() {
+            user = new User();
+            user.setId(10L);
+            user.setFirstName("John");
+            user.setLastName("Doe");
+            user.setEmail("john@example.com");
+
+            when(googleAuthenticationMethod.provider()).thenReturn(AuthProvider.GOOGLE);
+            when(googleAuthenticationMethod.authenticate(any(AuthRequest.class)))
+                    .thenReturn(new VerifiedIdentity(
+                            "John",
+                            "Doe",
+                            "john@example.com",
+                            "external-id",
+                            AuthProvider.GOOGLE
+                    ));
+
+            authService = new AuthService(
+                    userRepository,
+                    jwtTokenService,
+                    refreshTokenRepository,
+                    refreshTokenFactory,
+                    identityResolutionService,
+                    List.of(googleAuthenticationMethod)
+            );
+        }
+
+        @Test
+        void shouldReturnLoginRespSuccessfullyWhenIdTokenValid() {
+            AuthRequest req = new GoogleAuthRequest("valid-id-token");
+            TokenPair tokenPair = new TokenPair("access-token", "refresh-token");
+
+            when(identityResolutionService.resolveOrCreateUser(any(VerifiedIdentity.class))).thenReturn(user);
+            when(jwtTokenService.generateTokens(user)).thenReturn(tokenPair);
+            when(refreshTokenFactory.fromRaw(any(), any())).thenReturn(new RefreshToken());
+
+            LoginRespDTO resp = authService.authenticate(req);
+
+            assertNotNull(resp.getRefreshToken());
+            assertNotNull(resp.getAccessToken());
+
+            verify(refreshTokenRepository).save(any(RefreshToken.class));
+        }
     }
 
-    @Test
-    void shouldLoginSuccessfully() {
-        // Given
-        LoginReqDTO req = new LoginReqDTO();
-        req.setEmail("test@example.com");
-        req.setPassword("secret");
+    @Nested
+    class PasswordAuthentication {
 
-        when(userRepository.findByEmail("test@example.com"))
-                .thenReturn(Optional.of(user));
+        private AuthService authService;
+        private User user;
 
-        when(passwordEncoder.matches("secret", "encoded-password"))
-                .thenReturn(true);
+        @Mock
+        private AuthenticationMethod passwordAuthenticationMethod;
 
-        TokenPair tokens = new TokenPair("access-token", "refresh-token");
-        when(jwtTokenService.generateTokens(user)).thenReturn(tokens);
+        @BeforeEach
+        void setup() {
+            user = new User();
+            user.setFirstName("John");
+            user.setLastName("Doe");
+            user.setId(10L);
+            user.setEmail("john@example.com");
 
-        RefreshToken mockRT = new RefreshToken();
-        mockRT.setUserId(10L);
-        mockRT.setTokenHash("hashed");
-        mockRT.setJti("jti-xyz");
-        mockRT.setExpiresAt(Instant.now().plusSeconds(3600));
+            when(passwordAuthenticationMethod.provider()).thenReturn(AuthProvider.PASSWORD);
+            when(passwordAuthenticationMethod.authenticate(any(AuthRequest.class)))
+                    .thenReturn(new VerifiedIdentity(
+                            "John",
+                            "Doe",
+                            "john@example.com",
+                            "external-id",
+                            AuthProvider.PASSWORD
+                    ));
 
-        when(refreshTokenFactory.fromRaw("refresh-token", 10L))
-                .thenReturn(mockRT);
+            authService = new AuthService(
+                    userRepository,
+                    jwtTokenService,
+                    refreshTokenRepository,
+                    refreshTokenFactory,
+                    identityResolutionService,
+                    List.of(passwordAuthenticationMethod)
+            );
+        }
 
-        when(refreshTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        @Test
+        void shouldReturnLoginRespSuccessfullyWhenCredentialsValid() {
+            AuthRequest req = new PasswordAuthRequest("john@example", "strong-password");
+            TokenPair tokenPair = new TokenPair("access-token", "refresh-token");
 
-        // When
-        LoginRespDTO resp = authService.login(req);
+            when(identityResolutionService.resolveOrCreateUser(any(VerifiedIdentity.class))).thenReturn(user);
+            when(jwtTokenService.generateTokens(user)).thenReturn(tokenPair);
+            when(refreshTokenFactory.fromRaw(any(), any())).thenReturn(new RefreshToken());
 
-        // Then
-        assertThat(resp).isNotNull();
-        assertThat(resp.getUserId()).isEqualTo(10L);
-        assertThat(resp.getAccessToken()).isEqualTo("access-token");
-        assertThat(resp.getRefreshToken()).isEqualTo("refresh-token");
-        assertThat(resp.getMessage()).isEqualTo("Login successful");
+            LoginRespDTO resp = authService.authenticate(req);
 
-        verify(userRepository).findByEmail("test@example.com");
-        verify(passwordEncoder).matches("secret", "encoded-password");
-        verify(jwtTokenService).generateTokens(user);
-        verify(refreshTokenFactory).fromRaw("refresh-token", 10L);
-        verify(refreshTokenRepository).save(any());
+            assertNotNull(resp.getAccessToken());
+            assertNotNull(resp.getRefreshToken());
+
+            verify(refreshTokenRepository).save(any(RefreshToken.class));
+        }
     }
 
-    @Test
-    void shouldFailLoginIfUserNotFound() {
-        LoginReqDTO req = new LoginReqDTO();
-        req.setEmail("missing@example.com");
-        req.setPassword("pass");
+    @Nested
+    class UnsupportedProvider {
 
-        when(userRepository.findByEmail("missing@example.com"))
-                .thenReturn(Optional.empty());
+        private AuthService authService;
 
-        assertThatThrownBy(() -> authService.login(req))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Invalid credentials");
+        @BeforeEach
+        void setup() {
+            when(googleAuthenticationMethod.provider()).thenReturn(AuthProvider.GOOGLE);
+
+            authService = new AuthService(
+                    userRepository,
+                    jwtTokenService,
+                    refreshTokenRepository,
+                    refreshTokenFactory,
+                    identityResolutionService,
+                    List.of(googleAuthenticationMethod)
+            );
+        }
+
+        @Test
+        void shouldFailFastWhenProviderIsUnsupported() {
+            AuthRequest req = new PasswordAuthRequest("a@b.com", "password");
+
+            assertThrows(
+                    UnsupportedAuthProviderException.class,
+                    () -> authService.authenticate(req)
+            );
+
+            verify(refreshTokenRepository, never()).save(any());
+            verify(jwtTokenService, never()).generateTokens(any());
+            verify(identityResolutionService, never()).resolveOrCreateUser(any());
+        }
     }
 
-    @Test
-    void shouldFailLoginIfPasswordDoesNotMatch() {
-        LoginReqDTO req = new LoginReqDTO();
-        req.setEmail("test@example.com");
-        req.setPassword("wrong");
+    @Nested
+    class AuthenticationMethodFailure {
 
-        when(userRepository.findByEmail("test@example.com"))
-                .thenReturn(Optional.of(user));
+        private AuthService authService;
 
-        when(passwordEncoder.matches("wrong", "encoded-password"))
-                .thenReturn(false);
+        @Mock
+        private AuthenticationMethod failingAuthMethod;
 
-        assertThatThrownBy(() -> authService.login(req))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Invalid credentials");
+        @BeforeEach
+        void setup() {
+            when(failingAuthMethod.provider()).thenReturn(AuthProvider.PASSWORD);
+            when(failingAuthMethod.authenticate(any(AuthRequest.class))).thenThrow(new RuntimeException());
+
+            authService = new AuthService(
+                    userRepository,
+                    jwtTokenService,
+                    refreshTokenRepository,
+                    refreshTokenFactory,
+                    identityResolutionService,
+                    List.of(failingAuthMethod)
+            );
+        }
+
+        @Test
+        void shouldFailFastWhenAuthenticationFails() {
+            AuthRequest req = new PasswordAuthRequest("a@b.com", "password");
+
+            assertThrows(
+                    RuntimeException.class,
+                    () -> authService.authenticate(req)
+            );
+
+            verify(refreshTokenRepository, never()).save(any());
+            verify(jwtTokenService, never()).generateTokens(any());
+            verify(identityResolutionService, never()).resolveOrCreateUser(any());
+        }
+    }
+
+    @Nested
+    class IdentityResolutionFailure {
+
+        private AuthService authService;
+
+        @Mock
+        private AuthenticationMethod authenticationMethod;
+
+        @BeforeEach
+        void setup() {
+            VerifiedIdentity verifiedIdentity = new VerifiedIdentity(
+                    "John",
+                    "Doe",
+                    "john@example.com",
+                    "external-id",
+                    AuthProvider.PASSWORD
+            );
+
+            when(authenticationMethod.provider()).thenReturn(AuthProvider.PASSWORD);
+            when(authenticationMethod.authenticate(any(AuthRequest.class))).thenReturn(verifiedIdentity);
+            when(identityResolutionService.resolveOrCreateUser(any(VerifiedIdentity.class)))
+                    .thenThrow(new RuntimeException());
+
+            authService = new AuthService(
+                    userRepository,
+                    jwtTokenService,
+                    refreshTokenRepository,
+                    refreshTokenFactory,
+                    identityResolutionService,
+                    List.of(authenticationMethod)
+            );
+        }
+
+        @Test
+        void shouldFailFastWhenIdentityResolutionFails() {
+            AuthRequest req = new PasswordAuthRequest("john@example.com", "strong-password");
+
+            assertThrows(
+                    RuntimeException.class,
+                    () -> authService.authenticate(req)
+            );
+
+            verify(refreshTokenRepository, never()).save(any());
+            verify(jwtTokenService, never()).generateTokens(any());
+        }
+    }
+
+    @Nested
+    class AuthenticationJwtTokenGenerationFailure {
+        private AuthService authService;
+
+        @Mock
+        private AuthenticationMethod authenticationMethod;
+
+        @BeforeEach
+        void setup() {
+            User user = new User();
+            user.setId(10L);
+            user.setFirstName("John");
+            user.setLastName("Doe");
+            user.setEmail("john@example.com");
+
+            VerifiedIdentity verifiedIdentity = new VerifiedIdentity(
+                    "John",
+                    "Doe",
+                    "john@example.com",
+                    "external-id",
+                    AuthProvider.PASSWORD
+            );
+
+            when(authenticationMethod.provider()).thenReturn(AuthProvider.PASSWORD);
+            when(authenticationMethod.authenticate(any(AuthRequest.class))).thenReturn(verifiedIdentity);
+            when(identityResolutionService.resolveOrCreateUser(any(VerifiedIdentity.class))).thenReturn(user);
+            when(jwtTokenService.generateTokens(user)).thenThrow(new RuntimeException());
+
+            authService = new AuthService(
+                    userRepository,
+                    jwtTokenService,
+                    refreshTokenRepository,
+                    refreshTokenFactory,
+                    identityResolutionService,
+                    List.of(authenticationMethod)
+            );
+        }
+
+        @Test
+        void shouldFailFastWhenJwtTokenGenerationFails() {
+            AuthRequest req = new PasswordAuthRequest("john@example.com", "strong-password");
+
+            assertThrows(
+                    RuntimeException.class,
+                    () -> authService.authenticate(req)
+            );
+
+            verify(refreshTokenRepository, never()).save(any());
+        }
+    }
+
+    @Nested
+    class RefreshTokenRequest {
+
+        private AuthService authService;
+
+        @Mock
+        private AuthenticationMethod authenticationMethod;
+
+        @BeforeEach
+        void setup() {
+            when(authenticationMethod.provider()).thenReturn(AuthProvider.PASSWORD);
+
+            authService = new AuthService(
+                    userRepository,
+                    jwtTokenService,
+                    refreshTokenRepository,
+                    refreshTokenFactory,
+                    identityResolutionService,
+                    List.of(authenticationMethod)
+            );
+        }
+
+        @Nested
+        class JWTDecodingFailure {
+
+            @Test
+            void shouldFailFastWhenJwtDecodingFails() {
+                String req = "current-refresh-token";
+
+                when(jwtTokenService.decodeJWT(req)).thenThrow(new RuntimeException());
+
+                assertThrows(
+                        RuntimeException.class,
+                        () -> authService.refresh(req)
+                );
+
+                verify(userRepository, never()).findById(any());
+                verify(jwtTokenService, never()).generateTokens(any());
+                verify(refreshTokenRepository, never()).save(any());
+            }
+        }
+
+        @Nested
+        class UserRepositoryFailure {
+
+            private DecodedJWT decodedJWT;
+
+            @BeforeEach
+            void setup() {
+                decodedJWT = mock(DecodedJWT.class);
+                when(decodedJWT.getSubject()).thenReturn("10");
+            }
+
+            @Test
+            void shouldFailFastWhenUserRetrievalFails() {
+                String req = "current-refresh-token";
+
+                when(jwtTokenService.decodeJWT(req)).thenReturn(decodedJWT);
+                when(userRepository.findById(any())).thenThrow(new UserNotFoundException("User not found"));
+
+                assertThrows(
+                        UserNotFoundException.class,
+                        () -> authService.refresh(req)
+                );
+
+                verify(jwtTokenService, never()).generateTokens(any());
+                verify(refreshTokenRepository, never()).save(any());
+            }
+        }
+
+        @Nested
+        class RefreshJwtTokenGenerationFailure {
+
+            private DecodedJWT decodedJWT;
+            private User user;
+
+            @BeforeEach
+            void setup() {
+                decodedJWT = mock(DecodedJWT.class);
+                when(decodedJWT.getSubject()).thenReturn("10");
+
+                user = new User();
+                user.setId(10L);
+                user.setFirstName("John");
+                user.setLastName("Doe");
+                user.setEmail("john@example.com");
+            }
+
+            @Test
+            void shouldFailFastWhenTokenGenerationFails() {
+                String req = "current-refresh-token";
+
+                when(jwtTokenService.decodeJWT(req)).thenReturn(decodedJWT);
+                when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
+                when(jwtTokenService.generateTokens(user)).thenThrow(new RuntimeException());
+
+                assertThrows(
+                        RuntimeException.class,
+                        () -> authService.refresh(req)
+                );
+
+                verify(refreshTokenRepository, never()).save(any());
+            }
+        }
+
+        @Nested
+        class HappyPath {
+
+            private DecodedJWT decodedJWT;
+            private User user;
+
+            @BeforeEach
+            void setup() {
+                decodedJWT = mock(DecodedJWT.class);
+                when(decodedJWT.getSubject()).thenReturn("10");
+
+                user = new User();
+                user.setId(10L);
+                user.setFirstName("John");
+                user.setLastName("Doe");
+                user.setEmail("john@example.com");
+            }
+
+            @Test
+            void shouldReturnLoginRespSuccessfullyWhenRefreshTokenValid() {
+                String req = "current-valid-refresh-token";
+
+                when(jwtTokenService.decodeJWT(req)).thenReturn(decodedJWT);
+                when(userRepository.findById(anyLong())).thenReturn(Optional.of(user));
+                when(jwtTokenService.generateTokens(user))
+                        .thenReturn(new TokenPair(
+                                    "access-token",
+                                    "refresh-token"
+                                   )
+                        );
+
+                LoginRespDTO resp = authService.refresh(req);
+
+                assertNotNull(resp.getAccessToken());
+                assertNotNull(resp.getRefreshToken());
+
+                verify(userRepository).findById(any());
+                verify(jwtTokenService).generateTokens(any());
+                verify(refreshTokenRepository).save(any());
+            }
+        }
     }
 }
