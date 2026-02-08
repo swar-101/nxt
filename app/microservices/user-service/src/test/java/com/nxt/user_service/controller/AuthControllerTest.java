@@ -2,86 +2,193 @@ package com.nxt.user_service.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nxt.user_service.config.TestSecurityConfig;
+import com.nxt.user_service.dto.GoogleLoginReqDTO;
 import com.nxt.user_service.dto.LoginReqDTO;
-import com.nxt.user_service.dto.LoginRespDTO;
-import com.nxt.user_service.service.AuthService;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(
-        controllers = AuthController.class,
-        useDefaultFilters = false
-)
-@Import({
-        AuthController.class,
-        TestSecurityConfig.class
-})
-@AutoConfigureMockMvc(addFilters = false)
+@WebMvcTest(AuthController.class)
+@Import(TestSecurityConfig.class)
 class AuthControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
-    private AuthService authService;
-
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Test
-    void shouldLoginSuccessfully() throws Exception {
+    @Nested
+    class PasswordLogin {
 
-        LoginRespDTO mockResp = new LoginRespDTO();
-        mockResp.setUserId(10L);
-        mockResp.setAccessToken("access-token-123");
-        mockResp.setRefreshToken("refresh-token-456");
-        mockResp.setMessage("Login successful");
+        @Test
+        void shouldReturn400WhenEmailIdIsNull() throws Exception {
+            LoginReqDTO req = new LoginReqDTO();
+            req.setPassword("password");
 
-        Mockito.when(authService.login(any(LoginReqDTO.class)))
-                .thenReturn(mockResp);
+            mockMvc.perform(
+                    post("/auth/login/password")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req))
+            ).andExpect(status().isBadRequest());
+        }
 
-        String req = """
-                    { "email": "john@example.com", "password": "pass123" }
-                """;
+        @Nested
+        class EmailValidity {
 
-        mockMvc.perform(
-                        post("/api/v1/auth/login")
+            @Test
+            void shouldReturn400WhenEmailIdInvalid() throws Exception {
+                LoginReqDTO req = new LoginReqDTO();
+                req.setEmail("abc");
+                req.setPassword("strong-password");
+
+                mockMvc.perform(
+                        post("/auth/login/password")
                                 .contentType(MediaType.APPLICATION_JSON)
-                                .content(req)
-                )
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.userId").value(10L));
+                                .content(objectMapper.writeValueAsString(req))
+                ).andExpect(status().isBadRequest());
+            }
+
+            @Test
+            void shouldReturn200WhenEmailIdWithoutDotInDomain() throws Exception {
+                LoginReqDTO req = new LoginReqDTO();
+                req.setEmail("admin@mailserver");
+                req.setPassword("strong-password");
+
+                mockMvc.perform(
+                        post("/auth/login/password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(req))
+                ).andExpect(status().isOk());
+            }
+        }
+
+        @Nested
+        class PasswordValidity {
+
+            @Test
+            void shouldReturn400WhenPasswordIsNull() throws Exception {
+                LoginReqDTO req = new LoginReqDTO();
+                req.setEmail("john@example.com");
+
+                mockMvc.perform(
+                        post("/auth/login/password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(req))
+                ).andExpect(status().isBadRequest());
+            }
+
+            @Test
+            void shouldReturn400WhenPasswordIsBlank() throws Exception {
+                LoginReqDTO req = new LoginReqDTO();
+                req.setEmail("john@example.com");
+                req.setPassword("");
+
+                mockMvc.perform(
+                        post("/auth/login/password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(req))
+                ).andExpect(status().isBadRequest());
+            }
+
+            @Test
+            void shouldReturn400WhenPasswordTooShort() throws Exception {
+                LoginReqDTO req = new LoginReqDTO();
+                req.setEmail("john@example.com");
+                req.setPassword("abc@123");
+
+                mockMvc.perform(
+                        post("/auth/login/password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(req))
+                ).andExpect(status().isBadRequest());
+            }
+
+            @Test
+            void shouldReturn400WhenPasswordExceedsMaxLength() throws Exception {
+                LoginReqDTO req = new LoginReqDTO();
+                req.setEmail("john@example.com");
+                req.setPassword("a".repeat(73));
+
+                mockMvc.perform(
+                        post("/auth/login/password")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(req))
+                ).andExpect(status().isBadRequest());
+            }
+        }
     }
 
-    @Test
-    void shouldRefreshSuccessfully() throws Exception {
+    @Nested
+    class GoogleLogin {
 
-        LoginRespDTO mockResp = new LoginRespDTO();
-        mockResp.setUserId(10L);
-        mockResp.setAccessToken("new-access");
-        mockResp.setRefreshToken("new-refresh");
-        mockResp.setMessage("Token refreshed");
+        @Test
+        void shouldReturn200WhenIdTokenValid() throws Exception {
+            GoogleLoginReqDTO req = new GoogleLoginReqDTO();
+            req.setIdToken("valid-id-token");
 
-        Mockito.when(authService.refresh("valid-refresh"))
-                .thenReturn(mockResp);
+            mockMvc.perform(
+                    post("/auth/login/google")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req))
+            ).andExpect(status().isOk());
+        }
 
-        mockMvc.perform(
-                        post("/api/v1/auth/refresh")
-                                .param("refreshToken", "valid-refresh")
-                )
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").value("new-access"));
+        @Test
+        void shouldReturn400WhenIdTokenIsNull() throws Exception {
+            GoogleLoginReqDTO req = new GoogleLoginReqDTO();
+
+            mockMvc.perform(
+                    post("/auth/login/google")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req))
+            ).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldReturn400WhenIdTokenIsBlank() throws Exception {
+            GoogleLoginReqDTO req = new GoogleLoginReqDTO();
+            req.setIdToken("");
+
+            mockMvc.perform(
+                    post("/auth/login/google")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(req))
+            ).andExpect(status().isBadRequest());
+        }
+    }
+
+    @Nested
+    class RefreshTokenRequest {
+
+        @Test
+        void shouldReturn200WhenRefreshTokenIsValid() throws Exception {
+            String param = "valid-refresh-token";
+
+            mockMvc.perform(
+                    post("/auth/refresh?refreshToken=" + param)
+            ).andExpect(status().isOk());
+        }
+
+        @Test
+        void shouldReturn400WhenRefreshTokenIsMissing() throws Exception {
+            mockMvc.perform(
+                    post("/auth/refresh")
+            ).andExpect(status().isBadRequest());
+        }
+
+        @Test
+        void shouldReturn400WhenRefreshTokenIsBlank() throws Exception {
+            mockMvc.perform(
+                    post("/auth/refresh?refreshToken=")
+            ).andExpect(status().isBadRequest());
+        }
     }
 }
