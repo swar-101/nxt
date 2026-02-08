@@ -10,10 +10,12 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
+@Validated
 public class AuthController {
 
     private final AuthService authService;
@@ -24,7 +26,7 @@ public class AuthController {
     }
 
     @PostMapping("/login/password")
-    public ResponseEntity<LoginRespDTO> passwordLogin(@RequestBody LoginReqDTO req) {
+    public ResponseEntity<LoginRespDTO> passwordLogin(@RequestBody @Valid LoginReqDTO req) {
         long start = System.currentTimeMillis();
 
         LoginRespDTO resp = authService.authenticate(
