@@ -19,6 +19,7 @@ public class TestSecurityConfig {
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, resp, e) ->
                                 resp.sendError(401, "Authentication required")
+
                         )
                 )
                 .build();
