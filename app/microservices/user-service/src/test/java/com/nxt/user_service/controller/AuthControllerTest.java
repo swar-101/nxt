@@ -39,7 +39,7 @@ class AuthControllerTest {
             req.setPassword("password");
 
             mockMvc.perform(
-                    post("/auth/login/password")
+                    post("/api/v1/auth/login/password")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req))
             ).andExpect(status().isBadRequest());
@@ -55,7 +55,7 @@ class AuthControllerTest {
                 req.setPassword("strong-password");
 
                 mockMvc.perform(
-                        post("/auth/login/password")
+                        post("/api/v1/auth/login/password")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(req))
                 ).andExpect(status().isBadRequest());
@@ -68,7 +68,7 @@ class AuthControllerTest {
                 req.setPassword("strong-password");
 
                 mockMvc.perform(
-                        post("/auth/login/password")
+                        post("/api/v1/auth/login/password")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(req))
                 ).andExpect(status().isOk());
@@ -84,7 +84,7 @@ class AuthControllerTest {
                 req.setEmail("john@example.com");
 
                 mockMvc.perform(
-                        post("/auth/login/password")
+                        post("/api/v1/auth/login/password")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(req))
                 ).andExpect(status().isBadRequest());
@@ -97,7 +97,7 @@ class AuthControllerTest {
                 req.setPassword("");
 
                 mockMvc.perform(
-                        post("/auth/login/password")
+                        post("/api/v1/auth/login/password")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(req))
                 ).andExpect(status().isBadRequest());
@@ -110,7 +110,7 @@ class AuthControllerTest {
                 req.setPassword("abc@123");
 
                 mockMvc.perform(
-                        post("/auth/login/password")
+                        post("/api/v1/auth/login/password")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(req))
                 ).andExpect(status().isBadRequest());
@@ -123,7 +123,7 @@ class AuthControllerTest {
                 req.setPassword("a".repeat(73));
 
                 mockMvc.perform(
-                        post("/auth/login/password")
+                        post("/api/v1/auth/login/password")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(req))
                 ).andExpect(status().isBadRequest());
@@ -140,7 +140,7 @@ class AuthControllerTest {
             req.setIdToken("valid-id-token");
 
             mockMvc.perform(
-                    post("/auth/login/google")
+                    post("/api/v1/auth/login/google")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req))
             ).andExpect(status().isOk());
@@ -151,7 +151,7 @@ class AuthControllerTest {
             GoogleLoginReqDTO req = new GoogleLoginReqDTO();
 
             mockMvc.perform(
-                    post("/auth/login/google")
+                    post("/api/v1/auth/login/google")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req))
             ).andExpect(status().isBadRequest());
@@ -163,7 +163,7 @@ class AuthControllerTest {
             req.setIdToken("");
 
             mockMvc.perform(
-                    post("/auth/login/google")
+                    post("/api/v1/auth/login/google")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(req))
             ).andExpect(status().isBadRequest());
@@ -178,21 +178,21 @@ class AuthControllerTest {
             String param = "valid-refresh-token";
 
             mockMvc.perform(
-                    post("/auth/refresh?refreshToken=" + param)
+                    post("/api/v1/auth/refresh?refreshToken=" + param)
             ).andExpect(status().isOk());
         }
 
         @Test
         void shouldReturn400WhenRefreshTokenIsMissing() throws Exception {
             mockMvc.perform(
-                    post("/auth/refresh")
+                    post("/api/v1/auth/refresh")
             ).andExpect(status().isBadRequest());
         }
 
         @Test
         void shouldReturn400WhenRefreshTokenIsBlank() throws Exception {
             mockMvc.perform(
-                    post("/auth/refresh?refreshToken=")
+                    post("/api/v1/auth/refresh?refreshToken=")
             ).andExpect(status().isBadRequest());
         }
     }

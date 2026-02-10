@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Log4j2
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api/v1/users")
 public class RegistrationController {
 
     private final RegistrationService registrationService;

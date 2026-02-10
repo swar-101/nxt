@@ -14,7 +14,7 @@ public class TestSecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/profile/me").authenticated().anyRequest().permitAll()
+                        .requestMatchers("/api/v1/profile/me").authenticated().anyRequest().permitAll()
                 )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((req, resp, e) ->

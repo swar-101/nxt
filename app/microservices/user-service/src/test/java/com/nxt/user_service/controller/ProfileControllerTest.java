@@ -71,7 +71,7 @@ public class ProfileControllerTest {
             when(profileService.getById(10L)).thenReturn(user);
 
             mockMvc.perform(
-                    get("/profile/me")
+                    get("/api/v1/profile/me")
                     )
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(10L))
@@ -82,7 +82,7 @@ public class ProfileControllerTest {
         @Test
         void shouldReturn401WhenNotAuthenticated() throws Exception {
             mockMvc.perform(
-                        get("/profile/me")
+                        get("/api/v1/profile/me")
                     )
                     .andExpect(status().isUnauthorized());
         }
@@ -109,7 +109,7 @@ public class ProfileControllerTest {
                     .thenReturn(updatedUser);
 
             mockMvc.perform(
-                    put("/profile/me")
+                    put("/api/v1/profile/me")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(dto))
             ).andExpect(status().isOk())
@@ -126,7 +126,7 @@ public class ProfileControllerTest {
             UpdateProfileDTO dto = new UpdateProfileDTO();
 
             mockMvc.perform(
-                    put("/profile/me")
+                    put("/api/v1/profile/me")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(dto))
                     )
@@ -139,7 +139,7 @@ public class ProfileControllerTest {
             dto.setFirstName("Jane");
 
             mockMvc.perform(
-                    put("/profile/me")
+                    put("/api/v1/profile/me")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(dto))
 

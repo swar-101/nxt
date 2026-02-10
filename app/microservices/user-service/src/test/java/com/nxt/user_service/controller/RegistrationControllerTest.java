@@ -51,7 +51,7 @@ class RegistrationControllerTest {
                 .thenReturn(resp);
 
         mockMvc.perform(
-                        post("/users")
+                        post("/api/v1/users")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(req))
                 )
@@ -67,7 +67,7 @@ class RegistrationControllerTest {
         CreateUserReqDTO req = new CreateUserReqDTO(); // empty
 
         mockMvc.perform(
-                        post("/users")
+                        post("/api/v1/users")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(req))
                 )
@@ -87,7 +87,7 @@ class RegistrationControllerTest {
                 .thenThrow(new UserAlreadyExistsException("Email already registered"));
 
         mockMvc.perform(
-                        post("/users")
+                        post("/api/v1/users")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(req))
                 )
