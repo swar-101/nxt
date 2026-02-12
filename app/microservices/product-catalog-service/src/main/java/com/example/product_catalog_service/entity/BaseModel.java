@@ -22,4 +22,15 @@ public class BaseModel {
 
     @Column(nullable = false)
     private State state;
+
+    @PrePersist
+    private void onCreate() {
+        this.createdAt = new Date();
+        this.lastUpdatedAt = new Date();
+    }
+
+    @PreUpdate
+    private void onUpdate() {
+        this.lastUpdatedAt = new Date();
+    }
 }
