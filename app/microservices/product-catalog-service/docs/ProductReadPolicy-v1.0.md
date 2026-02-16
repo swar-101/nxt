@@ -10,7 +10,7 @@
    - eventually consistent
    read model used for search and listing queries. 
    
-3. Search results maybe stale up to 10 seconds due to index lag.
+3. Search results are stale up to 10 seconds due to index lag.
 
 4. Checkout must revalidate product price and `product.state` from DB for order creation. 
 
