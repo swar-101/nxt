@@ -32,4 +32,8 @@ public class Product extends BaseModel {
 
     @Column(columnDefinition = "json")
     private String metadata;
+
+    private Double price;
+
+    private Integer stock;
 }
