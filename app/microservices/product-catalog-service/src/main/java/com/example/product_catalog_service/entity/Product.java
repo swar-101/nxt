@@ -11,11 +11,13 @@ import java.util.List;
 @Entity
 public class Product extends BaseModel {
 
+    @Column(nullable = false)
     private String name;
 
     @Column(length = 5000)
     private String description;
 
+    // TODO: Check if this risks N + 1 queries
     @ManyToOne
     private Category category;
 
@@ -33,6 +35,7 @@ public class Product extends BaseModel {
     @Column(columnDefinition = "json")
     private String metadata;
 
+    @Column(nullable = false)
     private Double price;
 
     private Integer stock;
