@@ -20,6 +20,7 @@ public class BaseModel {
     @Column(nullable = false)
     private Date lastUpdatedAt;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private State state;
 
