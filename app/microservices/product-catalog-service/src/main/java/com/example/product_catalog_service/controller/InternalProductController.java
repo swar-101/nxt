@@ -1,5 +1,6 @@
 package com.example.product_catalog_service.controller;
 
+import com.example.product_catalog_service.dto.ProductInfoDTO;
 import com.example.product_catalog_service.entity.Product;
 import com.example.product_catalog_service.service.InternalProductService;
 import org.springframework.web.bind.annotation.*;
@@ -27,5 +28,10 @@ public class InternalProductController {
     @DeleteMapping("/{id}")
     public void delete(@PathVariable Long id) {
         service.delete(id);
+    }
+
+    @GetMapping("/{id}")
+    public ProductInfoDTO getProductForCart(@PathVariable Long id) {
+        return service.getProductInfoForCart(id);
     }
 }

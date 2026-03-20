@@ -1,6 +1,9 @@
 package com.example.product_catalog_service.service;
 
+import com.example.product_catalog_service.dto.ProductInfoDTO;
 import com.example.product_catalog_service.entity.Product;
+import com.example.product_catalog_service.entity.State;
+import com.example.product_catalog_service.exception.ProductNotFoundException;
 import com.example.product_catalog_service.port.ProductSearchIndexer;
 import com.example.product_catalog_service.repo.ProductRepository;
 import org.springframework.stereotype.Service;
@@ -42,5 +45,19 @@ public class InternalProductService {
     public void delete(Long productId) {
         productRepository.deleteById(productId);
         productSearchIndexer.delete(productId);
+    }
+
+    public ProductInfoDTO getProductInfoForCart(Long productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new ProductNotFoundException(productId));
+
+        return new ProductInfoDTO(
+                product.getId(),
+                product.getName(),
+                product.getDescription(),
+                product.getState() == State.ACTIVE,
+                product.getPrice(),
+                product.getStock()
+        );
     }
 }
