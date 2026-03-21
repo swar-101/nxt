@@ -4,6 +4,7 @@ import com.nxt.cart_service.client.ProductServiceClient;
 import com.nxt.cart_service.client.dto.ProductInfoDTO;
 import com.nxt.cart_service.entity.Cart;
 import com.nxt.cart_service.entity.State;
+import com.nxt.cart_service.exception.CartNotFoundException;
 import com.nxt.cart_service.exception.ProductNotFoundException;
 import com.nxt.cart_service.exception.ProductUnavailableException;
 import com.nxt.cart_service.model.CartItem;
@@ -175,5 +176,10 @@ public class CartService {
     private void persist(Cart cart) {
         cartRepository.save(cart);
         // TODO: Save to Redis after introducing dependencies (write-through)\
+    }
+
+    public Cart getCart(Long userId) {
+        return cartRepository.findByUserIdAndState(userId, State.ACTIVE)
+                .orElseThrow(() -> new CartNotFoundException("Cart not found for userId: " + userId));
     }
 }
