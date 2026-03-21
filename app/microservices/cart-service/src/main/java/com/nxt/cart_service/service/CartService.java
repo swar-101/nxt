@@ -58,8 +58,6 @@ public class CartService {
         // no duplicate product IDs
 
 
-
-
         validateInput(userId, productId, quantity);
 
         ProductInfoDTO product = fetchAndValidateProduct(productId);
@@ -93,8 +91,8 @@ public class CartService {
         }
 
         if (!productInfoDTO.isActive() ||
-            productInfoDTO.getStock() == null ||
-            productInfoDTO.getStock() <= 0) {
+                productInfoDTO.getStock() == null ||
+                productInfoDTO.getStock() <= 0) {
 
             throw new ProductUnavailableException("Product unavailable");
         }
@@ -181,5 +179,25 @@ public class CartService {
     public Cart getCart(Long userId) {
         return cartRepository.findByUserIdAndState(userId, State.ACTIVE)
                 .orElseThrow(() -> new CartNotFoundException("Cart not found for userId: " + userId));
+    }
+
+    public Cart removeItemFromCart(Long userId, Long productId) {
+
+        Cart cart = cartRepository.findByUserIdAndState(userId, State.ACTIVE)
+                .orElseThrow(() -> new CartNotFoundException("Cart not found for userId: " + userId));
+
+        List<CartItem> items = cart.getCartItems();
+
+        if (items == null || items.isEmpty()) {
+            return cart;
+        }
+
+        items.removeIf(item -> productId.equals(item.getProductId()));
+
+        recalculateTotal(cart);
+
+        persist(cart);
+
+        return cart;
     }
 }
