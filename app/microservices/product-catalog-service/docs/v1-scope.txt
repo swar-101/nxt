@@ -1,0 +1,49 @@
+# Product Catalog Service - V1
+
+## What V1 Solves
+- Product Details API
+- Product browsing by category
+- Pagination support
+- Product search using Elasticsearch
+- Product summaries and category summaries
+- ACTIVE state filtering
+- DTO separation from entities
+- Centralized exception handling
+- Input validation for search requests
+- Unit tests for service and controller layer
+- Clean service-controller-repository layering
+
+## What Is NOT Part Of V1
+- Advanced Elasticsearch analyzers
+- Search ranking tuning
+- Autocomplete / suggestions
+- Kafka based async indexing
+- Retry strategies for indexing failures
+- Distributed tracing and observability
+- Redis caching
+- Advanced filtering and sorting
+- Elasticsearch clustering / sharding
+- Strong consistency guarantees between DB and ES
+
+## Why These Are Deferred
+Current goal is:
+- maintainable code
+- reliable APIs
+- scalable architecture direction
+- clear service boundaries
+- functional correctness
+
+instead of premature optimization.
+
+The system is intentionally designed so these features can be added later without major architectural rewrites.
+
+## Scaling Direction (Future)
+If scaling toward high traffic / ~1M users:
+- horizontally scale service instances
+- place services behind load balancer
+- move indexing to async Kafka pipeline
+- introduce Redis caching
+- scale Elasticsearch as a cluster
+- add monitoring / structured logging / tracing
+- improve search quality and relevance tuning
+- define eventual consistency handling policies
