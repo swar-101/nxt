@@ -16,6 +16,10 @@ public class ProductSearchService {
     }
 
     public List<ProductSearchDocument> search(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            throw new IllegalArgumentException("Search keyword must not be blank");
+        }
+
         return productSearchRepository.searchByNameOrDescription(keyword);
     }
 }
