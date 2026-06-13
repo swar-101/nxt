@@ -4,6 +4,7 @@ import com.nxt.cart_service.client.ProductServiceClient;
 import com.nxt.cart_service.client.dto.ProductInfoDTO;
 import com.nxt.cart_service.entity.Cart;
 import com.nxt.cart_service.entity.State;
+import com.nxt.cart_service.exception.InvalidQuantityException;
 import com.nxt.cart_service.exception.ProductNotFoundException;
 import com.nxt.cart_service.exception.ProductUnavailableException;
 import com.nxt.cart_service.model.CartItem;
@@ -38,37 +39,28 @@ public class CartService {
         // productId present
         // quantity >= 1 must not exceed 10
         // -- fail fast
+        validateInput(userId, productId, quantity);
 
 
         // fetch product
         // exists?
             // active?
             // purchasable?
+        ProductInfoDTO product = fetchAndValidateProduct(productId);
 
         // fetch cart
         // if state != ACTIVE -> reject
             // try redis
             // fallback mongo
+        Cart cart = getOrCreateActiveCart(userId);
 
         // get items
         // exists? increase quantity
             // else add new item
         // enforce max qty 10
         // no duplicate product IDs
-
-
-
-
-        validateInput(userId, productId, quantity);
-
-        ProductInfoDTO product = fetchAndValidateProduct(productId);
-
-        Cart cart = getOrCreateActiveCart(userId);
-
         mergeOrAddItem(cart, product, quantity);
-
         recalculateTotal(cart);
-
         persist(cart);
 
         return cart;
@@ -79,8 +71,8 @@ public class CartService {
             throw new IllegalArgumentException("Invalid input");
         }
 
-        if (quantity < 1) {
-            throw new IllegalArgumentException("Quantity must be >= 1");
+        if (quantity < 1 || quantity > MAX_QUANTITY) {
+            throw new InvalidQuantityException("Quantity must be between 1 and " + MAX_QUANTITY);
         }
     }
 
@@ -88,14 +80,20 @@ public class CartService {
         ProductInfoDTO productInfoDTO = productServiceClient.getProduct(productId);
 
         if (productInfoDTO == null) {
-            throw new ProductNotFoundException("Product not found");
+            throw new ProductNotFoundException("Product with id " + productId + " not found");
+        }
+
+        if (productInfoDTO.getPrice() == null) {
+            throw new ProductUnavailableException(
+                    "Product " + productId + " has no valid price"
+            );
         }
 
         if (!productInfoDTO.isActive() ||
             productInfoDTO.getStock() == null ||
             productInfoDTO.getStock() <= 0) {
 
-            throw new ProductUnavailableException("Product unavailable");
+            throw new ProductUnavailableException("Product " + productId + " is inactive or out of stock");
         }
 
         return productInfoDTO;
@@ -174,6 +172,6 @@ public class CartService {
 
     private void persist(Cart cart) {
         cartRepository.save(cart);
-        // TODO: Save to Redis after introducing dependencies (write-through)\
+        // TODO: Save to Redis after introducing dependencies (write-through)
     }
 }
